@@ -18,11 +18,16 @@
 #include <ctime>
 #include <iostream>
 #include <iterator>
+#include <algorithm>
+#include <numeric>
+#include <vector>
 #include <boost/test/included/unit_test_framework.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <tslib/tseries.hpp>
+#include <tslib/ts.opps/ts.opps.hpp>
 #include <tslib/utils/window.function.hpp>
+#include <tslib/utils/cbind.hpp>
 #include <tslib/vector.summary.hpp>
 #include <tslib/vector.transform.hpp>
 
@@ -31,24 +36,29 @@ using namespace boost::unit_test_framework;
 using std::cout;
 using std::endl;
 using std::fill_n;
-using std::string;
-using std::vector;
 using std::ostream_iterator;
+using std::vector;
+
+//LDL = long, double, long
+//DDL = double, double, long
+typedef TSeries<long,double,long,TSdataSingleThreaded,PosixDate> LDL_ts;
+typedef TSeries<long,int,long,TSdataSingleThreaded,PosixDate> LIL_ts;
+typedef TSeries<double,double,long,TSdataSingleThreaded,PosixDate> DDL_ts;
 
 // seed random number generator
-// srand((unsigned)time(0));
+//srand (time(NULL));
 
 
 
 void null_constructor_test() {
-  TSeries<double,double> x;
+  LDL_ts x;
 
   // so we have the same type
   long zero = 0;
   BOOST_CHECK_EQUAL( x.nrow(), zero );
   BOOST_CHECK_EQUAL( x.ncol(), zero );
   BOOST_CHECK_EQUAL( x.getData(), static_cast<double*>(NULL) );
-  BOOST_CHECK_EQUAL( x.getDates(), static_cast<double*>(NULL) );
+  BOOST_CHECK_EQUAL( x.getDates(), static_cast<long*>(NULL) );
   BOOST_CHECK_EQUAL( static_cast<long>(x.getColnames().size()), zero );
 }
 
@@ -57,12 +67,12 @@ void std_constructor_test() {
   long nc = 10;
   long zero = 0;
 
-  TSeries<double,double> x(nr,nc);
+  LDL_ts x(nr,nc);
 
   BOOST_CHECK_EQUAL( x.nrow(), nr );
   BOOST_CHECK_EQUAL( x.ncol(), nc );
+  BOOST_CHECK( x.getDates() != static_cast<long*>(NULL) );
   BOOST_CHECK( x.getData() != static_cast<double*>(NULL) );
-  BOOST_CHECK( x.getDates() != static_cast<double*>(NULL) );
   BOOST_CHECK_EQUAL( static_cast<long>(x.getColnames().size()), zero );
 }
 
@@ -72,7 +82,7 @@ void tsdata_constructor_test() {
   long zero = 0;
 
   TSdataSingleThreaded<double,double>* ts_data = TSdataSingleThreaded<double,double>::init(nr,nc);
-  TSeries<double,double> x(ts_data);
+  DDL_ts x(ts_data);
 
   BOOST_CHECK_EQUAL( x.nrow(), nr );
   BOOST_CHECK_EQUAL( x.ncol(), nc );
@@ -82,9 +92,9 @@ void tsdata_constructor_test() {
 }
 
 void set_colnames_test() {
-  TSeries<double,double> x;
+  LDL_ts x;
 
-  vector<string> newColnames;
+  std::vector<std::string> newColnames;
 
   newColnames.push_back("hat");
   newColnames.push_back("cat");
@@ -92,7 +102,7 @@ void set_colnames_test() {
   // not allowed to set colnames not equal to number of cols
   BOOST_CHECK_EQUAL(x.setColnames(newColnames) , 1 );
 
-  TSeries<double,double> y(100,2);
+  LDL_ts y(100,2);
 
   // test set colnames success
   BOOST_CHECK_EQUAL(y.setColnames(newColnames) , 0 );
@@ -103,8 +113,8 @@ void set_colnames_test() {
 
 void range_specifier_test() {
 
-  vector<int> x;
-  vector<int> y;
+  std::vector<int> x;
+  std::vector<int> y;
 
   x.push_back(1);
   x.push_back(2);
@@ -127,7 +137,7 @@ void range_specifier_test() {
   BOOST_CHECK(r.getArg2()[1] == 1);
   BOOST_CHECK(r.getArg2()[2] == 2);
 
-  r.print();
+  //r.print();
 }
 
 void operators_test() {
@@ -135,8 +145,8 @@ void operators_test() {
   long ynr = 10;
   long nc = 10;
 
-  TSeries<double,double> x(xnr,nc);
-  TSeries<double,double> y(ynr,nc);
+  LDL_ts x(xnr,nc);
+  LDL_ts y(ynr,nc);
 
   // gernate data
   fill_n(x.getData(),x.nrow()*x.ncol(),100.0);
@@ -150,10 +160,10 @@ void operators_test() {
   for(long yi = 0; yi < y.nrow(); yi++)
     y.getDates()[yi] = yi;
 
-  TSeries<double,double> Zplus = x + y;
-  TSeries<double,double> Zminus = x - y;
-  TSeries<double,double> Zmultiplies = x * y;
-  TSeries<double,double> Zdivides = x / y;
+  LDL_ts Zplus = x + y;
+  LDL_ts Zminus = x - y;
+  LDL_ts Zmultiplies = x * y;
+  LDL_ts Zdivides = x / y;
 
   BOOST_CHECK_EQUAL( Zplus.nrow(), y.nrow() );
   BOOST_CHECK_EQUAL( Zplus.ncol(), 10 );
@@ -167,20 +177,70 @@ void operators_test() {
   BOOST_CHECK_EQUAL( Zdivides.nrow(), y.nrow() );
   BOOST_CHECK_EQUAL( Zdivides.ncol(), 10 );
 
-  cout << Zmultiplies << endl;
-
   // add test for all== later
-  TSeries<double,double> XplusS = x + 100.0;
-  TSeries<double,double> SplusX = 100.0 + x;
+  LDL_ts XplusS = x + 100.0;
+  LDL_ts SplusX = 100.0 + x;
 
-  TSeries<double,double> XminusS = x - 100.0;
-  TSeries<double,double> SminusX = 100.0 - x;
+  LDL_ts XminusS = x - 100.0;
+  LDL_ts SminusX = 100.0 - x;
 
-  TSeries<double,double> XmultS = x * 100.0;
-  TSeries<double,double> SmultX = 100.0 * x;
+  LDL_ts XmultS = x * 100.0;
+  LDL_ts SmultX = 100.0 * x;
 
-  TSeries<double,double> XdivS = x / 100.0;
-  TSeries<double,double> SdivX = 100.0 * x;
+  LDL_ts XdivS = x / 100.0;
+  LDL_ts SdivX = 100.0 * x;
+
+  vector<bool> xb_eq_scalar = x == 10;
+  vector<bool> xb_neq_ts = x != y;
+  vector<bool> xb_gt_ts = x > y;
+  vector<bool> xb_gte_ts = x >= y;
+  vector<bool> xb_lt_ts = x < y;
+  vector<bool> xb_lte_ts = x <= y;
+}
+
+void mixed_operators_test() {
+  long xnr = 100;
+  long ynr = 10;
+  long nc = 10;
+
+  LDL_ts x(xnr,nc);
+  LIL_ts y(ynr,nc);
+
+  // gernate data
+  fill_n(x.getData(),x.nrow()*x.ncol(),100.0);
+  fill_n(y.getData(),y.nrow()*y.ncol(),5);
+
+  // generate dates
+  for(long xi = 0; xi < x.nrow(); xi++)
+    x.getDates()[xi] = xi;
+
+  // generate dates
+  for(long yi = 0; yi < y.nrow(); yi++)
+    y.getDates()[yi] = yi;
+
+  LDL_ts Zplus = x + y;
+  LDL_ts Zminus = x - y;
+  LDL_ts Zmultiplies = x * y;
+  LDL_ts Zdivides = x / y;
+
+  BOOST_CHECK_EQUAL( Zplus.nrow(), y.nrow() );
+  BOOST_CHECK_EQUAL( Zplus.ncol(), 10 );
+
+  BOOST_CHECK_EQUAL( Zminus.nrow(), y.nrow() );
+  BOOST_CHECK_EQUAL( Zminus.ncol(), 10 );
+
+  BOOST_CHECK_EQUAL( Zmultiplies.nrow(), y.nrow() );
+  BOOST_CHECK_EQUAL( Zmultiplies.ncol(), 10 );
+
+  BOOST_CHECK_EQUAL( Zdivides.nrow(), y.nrow() );
+  BOOST_CHECK_EQUAL( Zdivides.ncol(), 10 );
+
+  vector<bool> xb_eq_scalar = x == static_cast<int>(10);
+  vector<bool> xb_neq_ts = x != y;
+  vector<bool> xb_gt_ts = x > y;
+  vector<bool> xb_gte_ts = x >= y;
+  vector<bool> xb_lt_ts = x < y;
+  vector<bool> xb_lte_ts = x <= y;
 }
 
 void assignment_test() {
@@ -190,8 +250,8 @@ void assignment_test() {
   long ynr = 100;
   long ync = 50;
 
-  TSeries<double,double> x(xnr,xnc);
-  TSeries<double,double> y(ynr,ync);
+  LDL_ts x(xnr,xnc);
+  LDL_ts y(ynr,ync);
 
   fill_n(x.getData(),x.nrow()*x.ncol(),1.0);
   fill_n(y.getData(),y.nrow()*y.ncol(),2.0);
@@ -231,17 +291,43 @@ void vector_window_apply_test() {
   typedef meanTraits<double>::ReturnType ansType;
 
   // gernate data
-  int N = 100;
+  const int N = 100;
+  const int window = 20;
   double* x = new double[N];
-  ansType* ans = new ansType[N];
+  ansType* ans = new ansType[N - (window - 1)];
+
   // gernate data
   for(long vi = 0; vi < N; vi++)
     x[vi] = vi+1;
 
-  windowApply<ansType,Mean>::apply(ans,x,x+N,20);
+  windowApply<ansType,Mean>::apply(ans,x,x+N,window);
 
-  BOOST_CHECK_EQUAL(ans[19],10.5);
+  BOOST_CHECK_EQUAL(ans[0],10.5);
+  delete []x;
+  delete []ans;
 }
+
+void rsi_test() {
+
+  // define our answer type
+  typedef rsiTraits<double>::ReturnType ansType;
+
+  // gernate data
+  const int N = 100;
+  const int window = 20;
+  double* x = new double[N];
+  ansType* ans = new ansType[N - (window - 1)];
+
+  // gernate data
+  for(long vi = 0; vi < N; vi++)
+    x[vi] = vi+1;
+
+  windowApply<ansType,RSI>::apply(ans,x,x+N,window);
+
+  delete []x;
+  delete []ans;
+}
+
 
 void window_apply_test() {
   // define our answer type
@@ -252,7 +338,7 @@ void window_apply_test() {
   long xnr = 50;
   long xnc = 5;
 
-  TSeries<double,double> x(xnr,xnc);
+  LDL_ts x(xnr,xnc);
 
   // gernate data
   for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
@@ -262,16 +348,14 @@ void window_apply_test() {
   for(long xi = 0; xi < x.nrow(); xi++)
     x.getDates()[xi] = xi+1;
 
-  TSeries<double,mean_ansType> mean_ans = x.window<mean_ansType,Mean>(5);
-  BOOST_CHECK_EQUAL(mean_ans.getData()[4],3);
+  TSeries<long,mean_ansType,long,TSdataSingleThreaded,PosixDate> mean_ans = x.window<mean_ansType,Mean>(5);
+  BOOST_CHECK_EQUAL(mean_ans.getData()[0],3);
 
-  TSeries<double,sum_ansType> sum_ans = x.window<sum_ansType,Sum>(5);
-  BOOST_CHECK_EQUAL(sum_ans.getData()[4],(5.0*6.0)/2.0);
+  TSeries<long,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.window<sum_ansType,Sum>(5);
+  BOOST_CHECK_EQUAL(sum_ans.getData()[0],(5.0*6.0)/2.0);
 
-  TSeries<double,rank_ansType> rank_ans = x.window<rank_ansType,Rank>(5);
-  BOOST_CHECK_EQUAL(rank_ans.getData()[4],5);
-
-  cout << rank_ans << endl;
+  TSeries<long,rank_ansType,long,TSdataSingleThreaded,PosixDate> rank_ans = x.window<rank_ansType,Rank>(5);
+  BOOST_CHECK_EQUAL(rank_ans.getData()[0],5);
 }
 
 void vector_transform_test() {
@@ -305,7 +389,38 @@ void vector_transform_test() {
        ostream_iterator<double>(cout, " "));
   cout << endl;
   */
+  delete []x;
+  delete []ans;
+}
 
+void vector_ema_test() {
+
+  // define our answer type
+  typedef meanTraits<double>::ReturnType ansType;
+
+  // gernate data
+  int N = 28;
+  double* x = new double[N];
+  ansType* ans = new ansType[N];
+
+  // gernate data
+  for(long vi = 0; vi < N; vi++)
+    x[vi] = vi+1;
+
+  int periods = 14;
+  EMA<ansType>::apply(ans,x,x+N, periods);
+
+  cout << "data" << endl;
+  copy(x, x+N,
+       ostream_iterator<double>(cout, " "));
+  cout << endl;
+  cout << "ans" << endl;
+  copy(ans, ans+N,
+       ostream_iterator<double>(cout, " "));
+  cout << endl;
+
+  delete []x;
+  delete []ans;
 }
 
 void transform_test() {
@@ -315,7 +430,7 @@ void transform_test() {
   long xnr = 50;
   long xnc = 5;
 
-  TSeries<double,double> x(xnr,xnc);
+  LDL_ts x(xnr,xnc);
 
   // gernate data
   for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
@@ -327,17 +442,43 @@ void transform_test() {
 
   x.getData()[21] = NAN;
 
-  TSeries<double,fill_ansType> fillbwd_ans = x.transform<fill_ansType,FillBwd>();
+  TSeries<long,fill_ansType,long,TSdataSingleThreaded,PosixDate> fillbwd_ans = x.transform<fill_ansType,FillBwd>();
   BOOST_CHECK_EQUAL(fillbwd_ans.getData()[21], static_cast<double>(23));
 }
 
 
 void lag_lead_test() {
 
-  long xnr = 50;
+  long xnr = 10;
   long xnc = 5;
 
-  TSeries<double,double> x(xnr,xnc);
+  LDL_ts x(xnr,xnc);
+
+  // gernate data
+  for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
+    x.getData()[vi] = vi+1;
+
+  // generate dates
+  for(long xi = 0; xi < x.nrow(); xi++)
+    x.getDates()[xi] = xi+1;
+  /*
+  cout << "original" << endl;
+  cout << x << endl;
+  LDL_ts ans_lag = x(1);
+  cout << "lag:" << endl;
+  cout << ans_lag << endl;
+  LDL_ts ans_lead = x(-1);
+  cout << "lead:" << endl;
+  cout << ans_lead << endl;
+  */
+}
+
+void diff_test() {
+
+  long xnr = 10;
+  long xnc = 5;
+
+  LDL_ts x(xnr,xnc);
 
   // gernate data
   for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
@@ -347,15 +488,14 @@ void lag_lead_test() {
   for(long xi = 0; xi < x.nrow(); xi++)
     x.getDates()[xi] = xi+1;
 
-  //TSeries<double,double> ans = x(1);
-  //TSeries<double,double> ans = x(-1);
-  cout << x(-2) << endl;
+  LDL_ts y(x.diff(1));
+  cout << y << endl;
 }
 
 void expanding_max_test() {
 
-  vector<double> x;
-  vector<double> ans;
+  std::vector<double> x;
+  std::vector<double> ans;
 
   x.push_back(numeric_traits<double>::NA());
   x.push_back(1.0);
@@ -366,11 +506,8 @@ void expanding_max_test() {
   x.push_back(1.0);
 
   //ans.reserve(x.size());
-  //ExpandingMaximum<double>::apply(back_insert_iterator<vector<double> >(ans),x.begin(),x.end());;
-  ExpandingMaximum<double>::apply(back_inserter(ans),x.begin(),x.end());;
-  
-  cout << ans.size() << endl;
-  copy(ans.begin(), ans.end(), ostream_iterator<double>(cout, " "));
+  //ExpandingMaximum<double>::apply(back_insert_iterator<std::vector<double> >(ans),x.begin(),x.end());;
+  ExpandingMaximum<double>::apply(back_inserter(ans),x.begin(),x.end());
 }
 
 
@@ -402,59 +539,10 @@ void posix_date_test() {
 
 }
 
-
-void quarterly_breaks_test() {
-  const char* jan_01_2007 = "01/01/2007";
-  const char* fmt_america = "%m/%d/%Y";
-  vector<long> dts;
-
-  long dt = PosixDate<long>::toDate(jan_01_2007,fmt_america);
-
-  for(int i = 0; i < 24; i++) {
-    back_inserter(dts) = PosixDate<long>::AddMonths(dt,i);
-  }
-
-
-  for(vector<long>::iterator beg = dts.begin(); beg != dts.end(); beg++) {
-    cout << PosixDate<long>::toString(*beg,fmt_america);
-    cout << endl;
-  }
-
-  vector<int> ans;
-  QuarterlyBreaks<PosixDate,int>(dts.begin(),dts.end(),ans);
-
-  copy(ans.begin(), ans.end(), ostream_iterator<int>(cout, " "));
-}
-
-void quarterly_tseries_test() {
-  const char* jan_01_2007 = "01/01/2007";
-  const char* fmt_america = "%m/%d/%Y";
-  vector<long> dts;
-
-  long xnr = 365*2;
-  long xnc = 5;
-
-  TSeries<long,double> x(xnr,xnc);
-
-  // gernate data
-  for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
-    x.getData()[vi] = vi+1;
-
-  long dt = PosixDate<long>::toDate(jan_01_2007,fmt_america);
-
-  for(int i = 0; i < xnr; i++) {
-    x.getDates()[i] = PosixDate<long>::AddDays(dt,i);
-  }
-
-  cout << x << endl;
-  cout << x.toQuarterly() << endl;
-
-}
-
 void window_function_test() {
 const char* jan_01_2007 = "01/01/2007";
   const char* fmt_america = "%m/%d/%Y";
-  vector<long> dts;
+  std::vector<long> dts;
 
   long xnr = 365;
   long xnc = 1;
@@ -462,8 +550,8 @@ const char* jan_01_2007 = "01/01/2007";
   long ynr = 100;
   long ync = 1;
 
-  TSeries<long,double> x(xnr,xnc);
-  TSeries<long,double> y(ynr,ync);
+  LDL_ts x(xnr,xnc);
+  LDL_ts y(ynr,ync);
 
   // gernate data for x
   for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
@@ -481,10 +569,234 @@ const char* jan_01_2007 = "01/01/2007";
   for(int i = 0; i < ynr; i++)
     y.getDates()[i] = PosixDate<long>::AddDays(dt,i);
 
-  TSeries<long,corTraits<double>::ReturnType> ans =  window_function<corTraits<double>::ReturnType,Cor>(x,x,20);
-  TSeries<long,corTraits<double>::ReturnType> ans2 =  window_function<corTraits<double>::ReturnType,Cor>(x,y,5);
+  TSeries<long,corTraits<double>::ReturnType,long,TSdataSingleThreaded,PosixDate> ans =  window_function<corTraits<double>::ReturnType,Cor>(x,x,20);
+  TSeries<long,corTraits<double>::ReturnType,long,TSdataSingleThreaded,PosixDate> ans2 =  window_function<corTraits<double>::ReturnType,Cor>(x,y,5);
+}
+
+void cbind_test() {
+  long xnr = 5;
+  long xnc = 1;
+
+  long ynr = 10;
+  long ync = 3;
+
+  LDL_ts x(xnr,xnc);
+  LDL_ts y(ynr,ync);
+
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i; }
+  for(int i = 0; i < x.nrow()*x.ncol(); i++) { x.getData()[i] = 1; }
+  for(int i = 0; i < y.nrow(); i++) { y.getDates()[i] = i; }
+  for(int i = 0; i < y.nrow()*y.ncol(); i++) { y.getData()[i] = i; }
+  vector< LDL_ts > seq;
+  seq.push_back(x);
+  seq.push_back(y);
+
+  /*
+  cout << "cbind:" << endl;
+  cout << "x" << x << endl;
+  cout << "y" << y << endl;
+
+  LDL_ts z_union = cbind(seq,false);
+  cout << z_union.nrow() << endl;
+  cout << z_union.ncol() << endl;
+  cout << "z_union" << endl << z_union << endl;
+
+  LDL_ts z_intersect = cbind(seq,true);
+  cout << z_intersect.nrow() << endl;
+  cout << z_intersect.ncol() << endl;
+  cout << "z_intersect:" << endl << z_intersect << endl;
+  */
+}
+
+void freq_conv_test_year() {
+  long xnr = 365 * 5;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyy>();
+  cout << "freq year:" << endl;
   cout << ans << endl;
-  cout << ans2 << endl;
+}
+
+void freq_conv_test_quarter() {
+  long xnr = 365 * 5;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyyqq>();
+  cout << "freq quarter:" << endl;
+  cout << ans << endl;
+}
+
+void freq_conv_test_month() {
+  long xnr = 365;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyymm>();
+  cout << "freq months:" << endl;
+  cout << ans << endl;
+}
+
+void freq_conv_test_week() {
+  long xnr = 240;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data -- 1 day increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyyww>();
+  cout << "freq week:" << endl;
+  cout << ans << endl;
+}
+
+void freq_conv_test_day() {
+  long xnr = 240;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data -- 1 hour increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyymmdd>();
+  cout << "freq day:" << endl;
+  cout << ans << endl;
+}
+
+void freq_conv_test_hour() {
+  long xnr = 240;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data -- 1 min increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyymmddHH>();
+  cout << "freq hour:" << endl;
+  cout << ans << endl;
+}
+
+void freq_conv_test_minute() {
+  long xnr = 240;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data -- 1 sec increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyymmddHHMM>();
+  cout << "freq minute:" << endl;
+  cout << ans << endl;
+}
+
+void freq_conv_test_second() {
+  long xnr = 240;
+  long xnc = 5;
+  DDL_ts x(xnr,xnc);
+  // generate dates/data -- 1/10 sec increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = static_cast<double>(i)/10; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+  DDL_ts ans = x.freq<yyyymmddHHMMSS>();
+  cout << "freq second:" << endl;
+  cout << ans << endl;
+}
+
+void time_window_test_month() {
+  // define our answer type
+  typedef sumTraits<double>::ReturnType sum_ansType;
+
+  long xnr = 500;
+  long xnc = 5;
+
+  DDL_ts x(xnr,xnc);
+
+  // generate dates/data
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+
+  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymm>();
+
+  cout << "months:" << endl;
+  cout << sum_ans << endl;
+}
+
+void time_window_test_day() {
+  // define our answer type
+  typedef sumTraits<double>::ReturnType sum_ansType;
+
+  long xnr = 240;
+  long xnc = 5;
+
+  DDL_ts x(xnr,xnc);
+
+  // generate dates/data -- 1 hour increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+
+  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmdd>();
+
+  cout << "days:" << endl;
+  cout << sum_ans << endl;
+}
+
+void time_window_test_hour() {
+  // define our answer type
+  typedef sumTraits<double>::ReturnType sum_ansType;
+
+  long xnr = 240;
+  long xnc = 5;
+
+  DDL_ts x(xnr,xnc);
+
+  // generate dates/data -- 1 min increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+
+  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHH>();
+
+  cout << "hours:" << endl;
+  cout << sum_ans << endl;
+}
+
+void time_window_test_minute() {
+  // define our answer type
+  typedef sumTraits<double>::ReturnType sum_ansType;
+
+  long xnr = 240;
+  long xnc = 5;
+
+  DDL_ts x(xnr,xnc);
+
+  // generate dates/data -- 1 sec increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+
+  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHHMM>();
+
+  cout << "minutes:" << endl;
+  cout << sum_ans << endl;
+}
+
+void time_window_test_second() {
+  // define our answer type
+  typedef sumTraits<double>::ReturnType sum_ansType;
+
+  long xnr = 240;
+  long xnc = 5;
+
+  DDL_ts x(xnr,xnc);
+
+  // generate dates/data -- 1/10 sec increments
+  for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = static_cast<double>(i)/10; }
+  std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
+
+  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHHMMSS>();
+
+  cout << "seconds:" << endl;
+  cout << sum_ans << endl;
 }
 
 test_suite*
@@ -492,22 +804,41 @@ init_unit_test_suite( int argc, char* argv[] ) {
 
   test_suite* test= BOOST_TEST_SUITE("tslib test");
 
+
   test->add( BOOST_TEST_CASE( &null_constructor_test ) );
   test->add( BOOST_TEST_CASE( &std_constructor_test ) );
   test->add( BOOST_TEST_CASE( &tsdata_constructor_test) );
   test->add( BOOST_TEST_CASE( &set_colnames_test ) );
   test->add( BOOST_TEST_CASE( &range_specifier_test ) );
   test->add( BOOST_TEST_CASE( &operators_test ) );
+  test->add( BOOST_TEST_CASE( &mixed_operators_test ) );
   test->add( BOOST_TEST_CASE( &assignment_test ) );
   test->add( BOOST_TEST_CASE( &vector_window_apply_test ) );
   test->add( BOOST_TEST_CASE( &window_apply_test ) );
   test->add( BOOST_TEST_CASE( &lag_lead_test ) );
+  test->add( BOOST_TEST_CASE( &diff_test ) );
   test->add( BOOST_TEST_CASE( &posix_date_test ) );
   test->add( BOOST_TEST_CASE( &vector_transform_test ) );
+  test->add( BOOST_TEST_CASE( &vector_ema_test ) );
   test->add( BOOST_TEST_CASE( &transform_test ) );
-  test->add( BOOST_TEST_CASE( &quarterly_breaks_test ) );
-  test->add( BOOST_TEST_CASE( &quarterly_tseries_test ) );
   test->add( BOOST_TEST_CASE( &window_function_test ) );
   test->add( BOOST_TEST_CASE( &expanding_max_test ) );
+
+  test->add( BOOST_TEST_CASE( &time_window_test_month ) );
+  test->add( BOOST_TEST_CASE( &time_window_test_day ) );
+  test->add( BOOST_TEST_CASE( &time_window_test_hour ) );
+  test->add( BOOST_TEST_CASE( &time_window_test_minute ) );
+  test->add( BOOST_TEST_CASE( &time_window_test_second ) );
+
+  test->add( BOOST_TEST_CASE( &cbind_test ) );
+
+  test->add( BOOST_TEST_CASE( &freq_conv_test_year ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_quarter ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_month ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_week ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_day ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_hour ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_minute ) );
+  test->add( BOOST_TEST_CASE( &freq_conv_test_second ) );
   return test;
 }

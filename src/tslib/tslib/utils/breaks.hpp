@@ -15,32 +15,26 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef WINDOW_INTERSECTION_APPLY_HPP
-#define WINDOW_INTERSECTION_APPLY_HPP
+#ifndef BREAKS_HPP
+#define BREAKS_HPP
 
-#include <iterator>
-#include <tslib/utils/numeric.traits.hpp>
+#include <iostream>
 
 namespace tslib {
 
-  template<typename ReturnType,
-	   template<class> class F>
-  class windowIntersectionApply {
-  public:
-    template<typename T, class DataIter, typename TSDIM>
-    static inline void apply(T ans, DataIter x_iter, DataIter y_iter, TSDIM size, const size_t window) {
-
-      std::advance(x_iter, window - 1);
-      std::advance(y_iter, window - 1);
-
-      for(TSDIM i = (window-1); i < size; i++) {
-	*ans = F<ReturnType>::apply(x_iter-(window-1),x_iter+1,y_iter-(window-1),y_iter+1);
-	++x_iter;
-	++y_iter;
-	++ans;
+  template<typename T, typename U>
+  void breaks(T beg, T end, U ans) {
+    T original_beg = beg;
+    // FIXME: check beg==end
+    // advance one position
+    while(beg != (end - 1)) {
+      if(*beg != *(beg+1)) {
+        ans = std::distance(original_beg, beg);
       }
+      ++beg;
     }
-  };
-} // namespace tslib
+    ans = std::distance(original_beg, end) - 1;
+  }
+}
 
-#endif // WINDOW_INTERSECTION_APPLY_HPP
+#endif // BREAKS_HPP

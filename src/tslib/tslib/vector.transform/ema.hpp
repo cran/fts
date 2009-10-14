@@ -15,32 +15,45 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef WINDOW_INTERSECTION_APPLY_HPP
-#define WINDOW_INTERSECTION_APPLY_HPP
+#ifndef EMA_HPP
+#define EMA_HPP
 
 #include <iterator>
-#include <tslib/utils/numeric.traits.hpp>
+#include <tslib/vector.summary/mean.hpp>
 
 namespace tslib {
 
-  template<typename ReturnType,
-	   template<class> class F>
-  class windowIntersectionApply {
+
+  template<typename ReturnType>
+  class EMA {
   public:
-    template<typename T, class DataIter, typename TSDIM>
-    static inline void apply(T ans, DataIter x_iter, DataIter y_iter, TSDIM size, const size_t window) {
+    template<typename T, typename U, typename V>
+    static inline void apply(T dest, U beg, U end, V periods) {
+      const double p = static_cast<double>(periods);
+      ReturnType initial_value = Mean<ReturnType>::apply(beg,beg+periods);
 
-      std::advance(x_iter, window - 1);
-      std::advance(y_iter, window - 1);
+      // fill with NA until we have initial window
+      int initial_count = 0;
+      while(initial_count < (periods - 1)  && beg != end) {
+        *dest++ = numeric_traits<ReturnType>::NA();
+        ++beg;
+        ++initial_count;
+      }
+      *dest++ = initial_value;
+      ++beg;
 
-      for(TSDIM i = (window-1); i < size; i++) {
-	*ans = F<ReturnType>::apply(x_iter-(window-1),x_iter+1,y_iter-(window-1),y_iter+1);
-	++x_iter;
-	++y_iter;
-	++ans;
+      while(beg != end) {
+	if(numeric_traits<typename std::iterator_traits<T>::value_type>::ISNA(*beg)) {
+	  *dest = numeric_traits<typename std::iterator_traits<T>::value_type>::NA();
+	} else {
+	  *dest = (*(dest-1) * (p - 1.0) + *beg)/p;
+	}
+	++beg;
+	++dest;
       }
     }
   };
+
 } // namespace tslib
 
-#endif // WINDOW_INTERSECTION_APPLY_HPP
+#endif // EMA_HPP

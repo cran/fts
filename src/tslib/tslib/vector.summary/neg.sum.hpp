@@ -15,28 +15,48 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef LAG_HPP
-#define LAG_HPP
+#ifndef NEG_SUM_HPP
+#define NEG_SUM_HPP
 
-#include <algorithm>
+#include <iterator>
+#include <tslib/utils/numeric.traits.hpp>
 
 namespace tslib {
 
-  template<typename ReturnType>
-  class Lag {
+  template<typename T>
+  class negSumTraits;
+
+  template<>
+  class negSumTraits<double> {
   public:
-    template<typename T, typename U, typename V>
-    static inline void apply(T dest, U beg, U end, V periods) {
+    typedef double ReturnType;
+  };
 
-      // set head to NA
-      for(V i = 0; i < periods; i++, dest++, end--)
-	*dest = numeric_traits<ReturnType>::NA();
+  template<>
+  class negSumTraits<int> {
+  public:
+    typedef int ReturnType;
+  };
 
-      if( end > beg )
-	std::copy(beg, end, dest);
+
+  template<typename ReturnType>
+  class NegSum {
+  public:
+    template<typename T>
+    static inline ReturnType apply(T beg, T end) {
+      ReturnType ans = 0;
+
+      while(beg != end) {
+	if(numeric_traits<typename std::iterator_traits<T>::value_type>::ISNA(*beg)) {
+	  return numeric_traits<ReturnType>::NA();
+	}
+	ans += *beg < 0 ? std::abs(*beg) : 0;
+	++beg;
+      }
+      return ans;
     }
   };
 
 } // namespace tslib
 
-#endif // LAG_HPP
+#endif // NEG_SUM_HPP

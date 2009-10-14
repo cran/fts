@@ -15,33 +15,29 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef LEAD_HPP
-#define LEAD_HPP
+#ifndef CLOSE_HPP
+#define CLOSE_HPP
 
-#include <algorithm>
+#include <iterator>
+#include <tslib/utils/numeric.traits.hpp>
 
 namespace tslib {
 
-  template<typename ReturnType>
-  class Lead {
+  template<typename T>
+  class closeTraits {
   public:
-    template<typename T, typename U, typename V>
-    static inline void apply(T dest, U beg, U end, V periods) {
+    typedef T ReturnType;
+  };
 
-      beg+=periods;
-
-      if(beg < end)
-	std::copy(beg, end, dest);
-
-      // advance dest to beginning of NA's
-      dest += std::distance(beg,end);
-
-      // set tail values to NA
-      for(V i = 0; i < periods; i++, dest++)
-	*dest = numeric_traits<ReturnType>::NA();
+  template<typename ReturnType>
+  class Close {
+  public:
+    template<typename T>
+    static inline ReturnType apply(T beg, T end) {
+      return *(end-1);
     }
   };
 
 } // namespace tslib
 
-#endif // LEAD_HPP
+#endif // CLOSE_HPP

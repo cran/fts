@@ -26,6 +26,11 @@
 #include <tslib/vector.summary/prod.hpp>
 #include <tslib/vector.summary/stdev.hpp>
 #include <tslib/vector.summary/rank.hpp>
+#include <tslib/vector.summary/open.hpp>
+#include <tslib/vector.summary/close.hpp>
+
+// technical analysis
+#include <tslib/vector.summary/rsi.hpp>
 
 // taking 2 vectors as arguments
 #include <tslib/vector.summary/cov.hpp>

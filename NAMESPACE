@@ -1,9 +1,5 @@
 useDynLib(fts)
 
-importFrom(utils,
-           head,
-           tail)
-
 importFrom(stats,
            lag)
 
@@ -11,12 +7,13 @@ export(
        fts,
        as.fts,
        as.fts.default,
+       as.fts.data.frame,
+       as.fts.zoo,
        as.matrix.fts,
+       template.fts,
        Ops.fts,
        "[.fts",
        "[<-.fts",
-       head.fts,
-       tail.fts,
        as.data.frame.fts,
        cbind.fts,
        rbind.fts,
@@ -28,9 +25,14 @@ export(
        write.rds.fts,
        print.fts,
 
+       to.yearly,
        to.quarterly,
-       to.weekly,
        to.monthly,
+       to.weekly,
+       to.daily,
+       to.hourly,
+       to.minute,
+       to.second,
 
        moving.mean,
        moving.sum,
@@ -47,16 +49,21 @@ export(
        lead,
        lead.fts,
        lag.fts,
+       diff.fts,
        fill.fwd,
        fill.bwd,
        fill.value,
+       analog,
+       monthly.sum,
 
        plot.fts,
 
        dates,
        dates.fts,
        "dates<-",
+       "dates<-.fts",
        event.dates,
+       intersect.all,
 
        remove.na.rows,
        remove.all.na.rows,
@@ -65,7 +72,58 @@ export(
        row.all,
        column.apply,
        col.any,
-       col.all
+       col.all,
+
+       lm.fts,
+
+       ## technical analysis
+       ema,
+       rsi,
+       month,
+       day,
+       ma.crossover.up,
+       ma.crossover.down,
+       lower.low,
+       higher.high,
+       repeated,
+       new.low,
+       new.high,
+       above.ma,
+       below.ma,
+       ma.d,
+       higher.low,
+       lower.high,
+       up,
+       down,
+       pct.chg,
+       inside.day,
+       inside.day.up,
+       inside.day.down,
+       inside.day.direction,
+       ma.crossover.up,
+       ma.crossover.down,
+       ma.crossover,
+       outside.day,
+       outside.day.up,
+       outside.day.down,
+       outside.day.direction,
+       hl.oc.ratio,
+       gap.up,
+       gap.down,
+       gap.up.continue,
+       gap.down.continue,
+       gap.continue,
+       gap.up.reverse,
+       gap.down.reverse,
+       gap.reverse,
+       gap.direction,
+       rsi.crossover.up,
+       rsi.crossover.down,
+       rsi.crossover,
+       ma.distance,
+       trend.day,
+       trend.day.up,
+       trend.day.down
 )
 
 S3method("Ops", "fts")
@@ -74,9 +132,6 @@ S3method("cummax", "fts")
 S3method("cummin", "fts")
 S3method("cumprod", "fts")
 S3method("cumsum", "fts")
-
-S3method("head", "fts")
-S3method("tail", "fts")
 
 S3method("lag", "fts")
 

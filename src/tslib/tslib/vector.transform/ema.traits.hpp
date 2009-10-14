@@ -15,32 +15,25 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef WINDOW_INTERSECTION_APPLY_HPP
-#define WINDOW_INTERSECTION_APPLY_HPP
+#ifndef EMA_TRAITS_HPP
+#define EMA_TRAITS_HPP
 
-#include <iterator>
-#include <tslib/utils/numeric.traits.hpp>
+template<typename T>
+class emaTraits;
 
-namespace tslib {
+template<>
+class emaTraits<double> {
+public:
+  typedef double ReturnType;
+  typedef int ArgType;  // for periods
+};
 
-  template<typename ReturnType,
-	   template<class> class F>
-  class windowIntersectionApply {
-  public:
-    template<typename T, class DataIter, typename TSDIM>
-    static inline void apply(T ans, DataIter x_iter, DataIter y_iter, TSDIM size, const size_t window) {
+template<>
+class emaTraits<int> {
+public:
+  typedef double ReturnType;
+  typedef int ArgType; // for periods
+};
 
-      std::advance(x_iter, window - 1);
-      std::advance(y_iter, window - 1);
 
-      for(TSDIM i = (window-1); i < size; i++) {
-	*ans = F<ReturnType>::apply(x_iter-(window-1),x_iter+1,y_iter-(window-1),y_iter+1);
-	++x_iter;
-	++y_iter;
-	++ans;
-      }
-    }
-  };
-} // namespace tslib
-
-#endif // WINDOW_INTERSECTION_APPLY_HPP
+#endif // EMA_TRAITS_HPP

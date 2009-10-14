@@ -3,6 +3,7 @@
 \alias{as.fts.default}
 \alias{as.fts.data.frame}
 \alias{as.fts.matrix}
+\alias{as.fts.zoo}
 \alias{as.data.frame.fts}
 \alias{as.matrix.fts}
 
@@ -12,6 +13,7 @@ convert an object into an fts and vice versa
 }
 \usage{
 as.fts(x)
+as.fts.zoo(x)
 }
 
 \arguments{
@@ -31,6 +33,6 @@ xm <- matrix(rnorm(N))
 dts <- format(seq(from=Sys.time(),length.out=N,by="DSTday"),"\%Y-\%m-\%d")
 rownames(xm) <- dts
 x.from.m <- as.fts(xm)
-x.from.df <- as.fts(as.data.frame(xm))
+x.from.df <- as.fts(data.frame(asofdate=dts,my.data=xm))
 }
 \keyword{ts}

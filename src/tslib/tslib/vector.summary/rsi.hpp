@@ -15,32 +15,63 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef WINDOW_INTERSECTION_APPLY_HPP
-#define WINDOW_INTERSECTION_APPLY_HPP
+#ifndef RSI_HPP
+#define RSI_HPP
 
 #include <iterator>
 #include <tslib/utils/numeric.traits.hpp>
 
 namespace tslib {
 
-  template<typename ReturnType,
-	   template<class> class F>
-  class windowIntersectionApply {
+  template<typename T>
+  class rsiTraits;
+
+  template<>
+  class rsiTraits<double> {
   public:
-    template<typename T, class DataIter, typename TSDIM>
-    static inline void apply(T ans, DataIter x_iter, DataIter y_iter, TSDIM size, const size_t window) {
+    typedef double ReturnType;
+  };
 
-      std::advance(x_iter, window - 1);
-      std::advance(y_iter, window - 1);
+  template<>
+  class rsiTraits<int> {
+  public:
+    typedef double ReturnType;
+  };
 
-      for(TSDIM i = (window-1); i < size; i++) {
-	*ans = F<ReturnType>::apply(x_iter-(window-1),x_iter+1,y_iter-(window-1),y_iter+1);
-	++x_iter;
-	++y_iter;
-	++ans;
+  template<typename ReturnType>
+  class RSI {
+  public:
+    template<typename T>
+    static inline ReturnType apply(T beg, T end) {
+      ReturnType pos_count = 0;
+      ReturnType neg_count = 0;
+      ReturnType pos_sum = 0;
+      ReturnType neg_sum = 0;
+      double avg_gain = 0;
+      double avg_loss = 0;
+
+      if(numeric_traits<ReturnType>::ISNA(*beg)) {
+        return numeric_traits<ReturnType>::NA();
       }
+      if(*beg > 0) {
+        ++pos_count;
+        pos_sum += *beg;
+      }
+      if(*beg < 0) {
+        ++neg_count;
+        neg_sum += std::abs(*beg);
+      }
+      if(pos_count) {
+        avg_gain = pos_sum/pos_count;
+      }
+      if(neg_count) {
+        avg_loss = neg_sum/neg_count;
+      }
+      return 100.0 - 100.0 / (1.0 + avg_gain/avg_loss);
     }
   };
+
+
 } // namespace tslib
 
-#endif // WINDOW_INTERSECTION_APPLY_HPP
+#endif // RSI_HPP

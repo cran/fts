@@ -15,20 +15,48 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. //
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef RANGE_OPP_HPP
-#define RANGE_OPP_HPP
+#ifndef POS_SUM_HPP
+#define POS_SUM_HPP
 
-#include <tslib/range.specifier/range.iterator.hpp>
+#include <iterator>
+#include <tslib/utils/numeric.traits.hpp>
 
-template<typename T, typename U, typename RangeIterator, typename BinaryOpp>
-inline
-void applyRangeOpp(T ans_iter, RangeIterator iter1, RangeIterator iter2, const U size, BinaryOpp opp) {
-  for(U i = 0; i < size; i++) {
-    *ans_iter = opp( *iter1 , *iter2 );
-    ++ans_iter;
-    ++iter1;
-    ++iter2;
-  }
-}
+namespace tslib {
 
-#endif // RANGE_OPP_HPP
+  template<typename T>
+  class posSumTraits;
+
+  template<>
+  class posSumTraits<double> {
+  public:
+    typedef double ReturnType;
+  };
+
+  template<>
+  class posSumTraits<int> {
+  public:
+    typedef int ReturnType;
+  };
+
+
+  template<typename ReturnType>
+  class PosSum {
+  public:
+    template<typename T>
+    static inline ReturnType apply(T beg, T end) {
+      ReturnType ans = 0;
+
+      while(beg != end) {
+	if(numeric_traits<typename std::iterator_traits<T>::value_type>::ISNA(*beg)) {
+	  return numeric_traits<ReturnType>::NA();
+	}
+	ans += *beg > 0 ? *beg : 0;
+	++beg;
+      }
+      return ans;
+    }
+  };
+
+} // namespace tslib
+
+#endif // POS_SUM_HPP

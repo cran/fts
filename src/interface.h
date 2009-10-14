@@ -1,3 +1,5 @@
+// -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; tab-width: 8 -*-
+
 #ifndef INTERFACE_HPP
 #define INTERFACE_HPP
 
@@ -15,6 +17,7 @@ extern "C" {
 
   SEXP movingCov(SEXP x, SEXP y, SEXP periods);
   SEXP movingCor(SEXP x, SEXP y, SEXP periods);
+  SEXP analog(SEXP x, SEXP y, SEXP periods);
 
   SEXP expandingMax(SEXP x);
   SEXP expandingMin(SEXP x);
@@ -26,10 +29,22 @@ extern "C" {
 
   SEXP lag(SEXP x, SEXP periods);
   SEXP lead(SEXP x, SEXP periods);
+  SEXP diff(SEXP x, SEXP periods);
 
+  SEXP dailySum(SEXP x);
+  SEXP monthlySum(SEXP x);
+
+  SEXP toYearly(SEXP x);
   SEXP toQuarterly(SEXP x);
   SEXP toMonthly(SEXP x);
   SEXP toWeekly(SEXP x);
+  SEXP toDaily(SEXP x);
+  SEXP toHourly(SEXP x);
+  SEXP toMinute(SEXP x);
+  SEXP toSecond(SEXP x);
+
+  SEXP rsi(SEXP x, SEXP periods);
+  SEXP ema(SEXP x, SEXP periods);
 }
 
 #endif // INTERFACE_HPP

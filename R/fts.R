@@ -26,20 +26,17 @@ fts <- function(data,dates) {
     } else if (length(dates) != NROW(data)) {
         stop("Dates and data must be same length.")
     }
-    data <- unclass(data)
 
-    if(is.null(dim(data))) {
-        dim(data) <- c(length(data),1)
-    }
     if(is.numeric(dates)&&is.null(class(dates))) {
         class(dates) <- c("POSIXt","POSIXct")
     } else {
         dates <- as.POSIXct(dates)
     }
-    ans <- data
+
+    ans <- as.matrix(data)
 
     ## kill old rownames
-    rownames(data) <- NULL
+    rownames(ans) <- NULL
 
     ## set dates attribute of answer
     attr(ans,"dates") <- dates
@@ -60,10 +57,39 @@ as.fts.default <- function(x) {
     fts(data=as.matrix(x),dates=dts)
 }
 
+as.fts.data.frame <- function(x) {
+    cnames <-  colnames(x)
+    ans <- fts(dates=x[,"asofdate"],
+               data=as.matrix(x[,-match("asofdate",cnames)]))
+    colnames(ans) <- cnames[-1]
+    ans
+}
+
+as.fts.zoo <- function(x) {
+    stopifnot(inherits(index(x), "POSIXct"))
+
+    fts(data=coredata(x),
+        dates=index(x))
+}
+
 as.matrix.fts <- function(x, ...) {
     ans <- matrix(as.numeric(x),nrow=nrow(x),ncol=ncol(x))
     colnames(ans) <- colnames(x)
     rownames(ans) <- format(dates(x),"%Y%m%d")
+    ans
+}
+
+as.dataframe.fts <- function(x, ...) {
+    ans <- data.frame(x)
+    rownames(ans) <- format(dates(x),"%Y%m%d")
+    ans
+}
+
+## create an fts object given dates and column names
+template.fts <- function(dates,cnames) {
+    ans <- fts(dates=dates,
+               data=matrix(nrow=length(dates),ncol=length(cnames)))
+    colnames(ans) <- cnames
     ans
 }
 
@@ -183,7 +209,7 @@ print.fts <- function(x, ...) {
     }
     x <- unclass(x)
     x <- NextMethod()
-    class(x) <- "fts"
+    class(x) <- c("fts","matrix")
     x
 }
 
@@ -231,9 +257,7 @@ remove.all.na.rows <- function(x) {
 }
 
 as.data.frame.fts <- function(x,row.names = NULL, optional = FALSE, ...) {
-    ans <- as.data.frame.matrix(unclass(x))
-    rownames(ans) <- dates(x)
-    ans
+    data.frame(asofdate=dates(x),as.data.frame.matrix(unclass(x)))
 }
 
 as.matrix.fts <- function(x, ...) {
@@ -297,7 +321,7 @@ cbind.fts <- function(...) {
     cnames.list <- lapply(x,colnames)
     colnames(ans) <- fix.cnames(cnames.list)
     attr(ans,"dates") <- ans.dates
-    class(ans) <- "fts"
+    class(ans) <- c("fts","matrix")
     ans
 }
 
@@ -329,20 +353,18 @@ trim <- function(x,trim.dates) {
     x[new.dates,]
 }
 
-write.csv.fts <- function(x,file,date.format="%Y-%m-%d %T",...) {
-    rownames(x) <- format(dates(x),date.format)
-    write.csv(x,file,na="=NA()",...)
+write.csv.fts <- function(x, file, ...) {
+    write.csv(as.data.frame(x), file,row.names=FALSE, ...)
 }
 
-read.csv.fts <- function(file,date.format="%Y-%m-%d %T",...) {
-    ans <- as.matrix(read.csv(file,row.names=1,...))
+read.csv.fts <- function(file, date.column=1, date.format="%Y-%m-%d",...) {
+    fts.data <- read.csv(file,...)
 
-    dts <- as.POSIXct(strptime(rownames(ans),date.format))
+    if(mode(date.column)=="character")
+        date.column <- match(date.column,colnames(fts.data))
 
-    rownames(ans) <- NULL
-
-    fts(dates=dts,
-            data=ans)
+    fts(dates=as.POSIXct(strptime(fts.data[,date.column],date.format)),
+        data=as.matrix(fts.data[, -date.column, drop=F]))
 }
 
 read.rds.fts <- function(file) {
@@ -352,20 +374,6 @@ read.rds.fts <- function(file) {
 
 write.rds.fts <- function(x,file) {
     .saveRDS(x,file)
-}
-
-
-head.fts <- function(x,n=10,...) {
-    x[1:n,]
-}
-
-tail.fts <- function(x,n=10,...) {
-    nr <- nrow(x)
-    if(n>=nr) {
-        x
-    } else {
-        x[(nr-n+1):nr,]
-    }
 }
 
 cumsum.fts <- function(x) {
@@ -409,7 +417,7 @@ dates.fts <- function(x) {
 "dates<-.fts" <- function(x, value) {
     ## FIXME: might put something here to convert
     ## POSIXlt to POSIXct
-    stopifnot(length(value)==length(dates(x)))
+    stopifnot(length(value)==NROW(x))
     attr(x,"dates") <- value
     x
 }
@@ -418,6 +426,22 @@ dates.fts <- function(x) {
 event.dates <- function(x) {
     stopifnot(ncol(x)==1)
     dates(x)[as.logical(x)&!is.na(x)]
+}
+
+## find date intersection of all tseries
+intersect.all <- function(...) {
+    x <- list(...)
+    dts <- lapply(x,dates)
+    ans <- dts[[1]]
+
+    if(length(dts) > 1) {
+        for(i in 2:length(x)) {
+            ans <- intersect(ans,dts[[i]])
+        }
+    }
+
+    class(ans) <- c("POSIXt","POSIXct")
+    ans
 }
 
 
@@ -478,8 +502,9 @@ since.na <- function(x) {
 }
 
 lag.fts <- function(x, k, ...) {
-    if(k < 0) stop("lag: only positive values of k are allowed")
-    .Call("lag", x, as.integer(k),PACKAGE="fts")
+    stopifnot(k > 0)
+    ans <- .Call("lag", x, as.integer(k),PACKAGE="fts")
+    ans
 }
 
 lead <- function(x, k, ...) {
@@ -489,6 +514,13 @@ lead <- function(x, k, ...) {
 lead.fts <- function(x, k, ...) {
     if(k < 0) stop("only positive values of k are allowed")
     .Call("lead",x ,as.integer(k),PACKAGE="fts")
+}
+
+diff.fts <- function(x, k, ...) {
+    stopifnot(k > 0)
+    ans <- .Call("diff", x, as.integer(k),PACKAGE="fts")
+    attr(ans,"ticker") <- attr(x,"ticker")
+    ans
 }
 
 fill.fwd <- function(x) {
@@ -503,16 +535,44 @@ fill.value <- function(x,value) {
     .Call("fillValue",x,value,PACKAGE="fts")
 }
 
+monthly.sum <- function(x) {
+    .Call("monthlySum",x,PACKAGE="fts")
+}
+
+to.yearly <- function(x) {
+    .Call("toYearly",x,PACKAGE="fts")
+}
+
 to.quarterly <- function(x) {
     .Call("toQuarterly",x,PACKAGE="fts")
+}
+
+to.monthly <- function(x) {
+    .Call("toMonthly",x,PACKAGE="fts")
 }
 
 to.weekly <- function(x) {
     .Call("toWeekly",x,PACKAGE="fts")
 }
 
-to.monthly <- function(x) {
-    .Call("toMonthly",x,PACKAGE="fts")
+to.daily <- function(x) {
+    .Call("toDaily",x,PACKAGE="fts")
+}
+
+to.hourly <- function(x) {
+    .Call("toHourly",x,PACKAGE="fts")
+}
+
+to.minute <- function(x) {
+    .Call("toMinute",x,PACKAGE="fts")
+}
+
+to.second <- function(x) {
+    .Call("toSecond",x,PACKAGE="fts")
+}
+
+analog <- function(stationary, window, moving=stationary) {
+    .Call("analog", stationary, moving, as.integer(window), PACKAGE="fts")
 }
 
 ###############################################################
@@ -526,4 +586,303 @@ plot.fts <- function(x,type="l",...) {
     if("close"%in%colnames(x)) x <- x[,"close"]
 
     plot(dates(x),x,type=type,...)
+}
+
+###############################################################
+############ Regression for Fts Objects #######################
+###############################################################
+###############################################################
+
+lm.fts <- function(y,...,origin=F) {
+    x <- list(...)
+
+    i.dts <- intersect(dates(y),
+                       do.call(intersect.all,x))
+    class(i.dts) <- c("POSIXt","POSIXct")
+
+    x <- lapply(x,"[",i.dts,)
+    x <- unclass(do.call(cbind,x))
+    y <- unclass(y[i.dts,])
+
+    if(origin) {
+        ans <- lm( y ~ 0 + x)
+    } else {
+        ans <- lm(y~x)
+    }
+    ans
+}
+
+###############################################################
+################### Technical Analysis  #######################
+###############################################################
+###############################################################
+ema <- function(x,periods) {
+    .Call("ema",x,as.integer(periods),PACKAGE="fts")
+}
+
+rsi <- function(x,periods) {
+    x.up <- x
+    x.up[x<0] <- 0
+    x.down <- x
+    x.down[x>0] <- 0
+
+    x.avg.up <- ema(x.up, periods)
+    x.avg.down <- ema(x.down, periods)
+
+    100 - 100/(1 - x.avg.up/x.avg.down)
+}
+
+month <- function(x) {
+    fts(dates=dates(x),data=as.POSIXlt(dates(x))$mon+1)
+}
+
+day <- function(x) {
+    fts(dates = dates(x), data = as.POSIXlt(dates(x))$wday)
+}
+
+ma.crossover.down <- function(x,n) {
+    has.close <- !is.null(colnames(x)) && "close" %in% colnames(x)
+    stopifnot(has.close || ncol(x) == 1)
+    col <- ifelse(has.close,"close",1)
+
+    x <- x[,col]
+
+    xma <- moving.mean(x,n)
+
+    x < xma & lag(x,1) > lag(xma,1)
+}
+
+ma.crossover.up <- function(x,n) {
+    has.close <- !is.null(colnames(x)) && "close" %in% colnames(x)
+    stopifnot(has.close || ncol(x) == 1)
+    col <- ifelse(has.close,"close",1)
+
+    x <- x[,col]
+
+    xma <- moving.mean(x,n)
+
+    x > xma & lag(x,1) < lag(xma,1)
+}
+
+ma.crossover <- function(x,n) {
+    ma.crossover.up(x,n) - ma.crossover.down(x,n)
+}
+
+lower.low <- function(x) {
+    stopifnot("low" %in% colnames(x))
+    xl <- x[,"low"]
+    xl < lag(xl,1)
+}
+
+higher.high <- function(x) {
+    stopifnot("high" %in% colnames(x))
+    xh <- x[,"high"]
+    xh > lag(xh,1)
+}
+
+repeated <- function(x, times) {
+    stopifnot(ncol(x)==1 && mode(x)=="logical")
+    moving.sum(x,times)==as.integer(times)
+}
+
+new.low <- function(x,n) {
+    stopifnot("low" %in% colnames(x))
+    moving.rank(x[,"low"],n)==1
+}
+
+new.high <- function(x,n) {
+    stopifnot("high" %in% colnames(x))
+    moving.rank(x[,"high"],n)==as.integer(n)
+}
+
+above.ma <- function(x,n) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xc > moving.mean(xc,n)
+}
+
+below.ma <- function(x,n) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xc < moving.mean(xc,n)
+}
+
+ma.d <- function(x,n) {
+    above.ma(x,n) - below.ma(x,n)
+}
+
+higher.low <- function(x) {
+    stopifnot("low" %in% colnames(x))
+    xl <- x[,"low"]
+    xl > lag(xl,1)
+}
+
+lower.high <- function(x) {
+    stopifnot("high" %in% colnames(x))
+    xh <- x[,"high"]
+    xh < lag(xh,1)
+}
+
+up <- function(x) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xc > lag(xc,1)
+}
+
+down <- function(x) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xc < lag(xc,1)
+}
+
+pct.chg <- function(x) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    diff(xc,1) / lag(xc,1) * 100
+}
+
+inside.day <- function(x) {
+    stopifnot(all(c("high","low") %in% colnames(x)))
+
+    xh <- x[,"high"]
+    xl <- x[,"low"]
+
+    xh < lag(xh,1) & xl > lag(xl,1)
+}
+
+inside.day.up <- function(x) {
+    inside.day(x) & up(x)
+}
+
+inside.day.down <- function(x) {
+    inside.day(x) & down(x)
+}
+
+inside.day.direction <- function(x) {
+    inside.day.up(x) - inside.day.down(x)
+}
+
+outside.day <- function(x) {
+    stopifnot(all(c("high","low") %in% colnames(x)))
+
+    xh <- x[,"high"]
+    xl <- x[,"low"]
+
+    xh > lag(xh,1) & xl < lag(xl,1)
+}
+
+outside.day.up <- function(x) {
+    outside.day(x) & up(x)
+}
+
+outside.day.down <- function(x) {
+    outside.day(x) & down(x)
+}
+
+outside.day.direction <- function(x) {
+    outside.day.up(x) - outside.day.down(x)
+}
+
+hl.oc.ratio <- function(x) {
+    stopifnot(all(c("open","high","low","close") %in% colnames(x)))
+    abs(x[,"close"] - x[,"open"]) / (x[,"high"] - x[,"low"])
+}
+
+gap.up <- function(x) {
+    stopifnot(all(c("open","high","low","close") %in% colnames(x)))
+    xh <- x[,"high"]
+    xo <- x[,"open"]
+    xo > lag(xh,1)
+}
+
+gap.down <- function(x) {
+    stopifnot(all(c("open","high","low","close") %in% colnames(x)))
+    xl <- x[,"low"]
+    xo <- x[,"open"]
+    xo < lag(xl,1)
+}
+
+gap.up.continue <- function(x) {
+    gap.up(x) & up(x)
+}
+
+gap.down.continue <- function(x) {
+    gap.down(x) & down(x)
+}
+
+gap.continue <- function(x) {
+    gap.up.continue(x) - gap.down.continue(x)
+}
+
+gap.up.reverse <- function(x) {
+    gap.up(x) & down(x)
+}
+
+gap.down.reverse <- function(x) {
+    gap.down(x) & up(x)
+}
+
+gap.reverse <- function(x) {
+    gap.up.reverse(x) - gap.down.reverse(x)
+}
+
+gap.direction <- function(x) {
+    gap.up(x) - gap.down(x)
+}
+
+rsi.crossover.up <- function(x,periods,thresh) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xd <- diff(xc,1)
+    x.rsi <- rsi(xd,periods)
+    x.rsi <- x.rsi[!is.na(x.rsi),]
+    x.rsi < thresh & lag(x.rsi,1) > thresh
+}
+
+rsi.crossover.down <- function(x, periods, thresh) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xd <- diff(xc,1)
+    x.rsi <- rsi(xd,periods)
+    x.rsi <- x.rsi[!is.na(x.rsi),]
+    x.rsi > thresh & lag(x.rsi,1) < thresh
+}
+
+rsi.crossover <- function(x,periods, thresh) {
+    rsi.crossover.up(x,periods,thresh) - rsi.crossover.down(x,periods,thresh)
+}
+
+ma.distance <- function(x, periods) {
+    stopifnot("close" %in% colnames(x))
+    xc <- x[,"close"]
+    xma <- moving.mean(xc,periods)
+    (xc - xma) / xc * 100
+}
+
+trend.day.up <- function(x,thresh=0.2) {
+    stopifnot(all(c("open","high","low","close") %in% colnames(x)))
+    xo <- x[,"open"]
+    xh <- x[,"high"]
+    xl <- x[,"low"]
+    xc <- x[,"close"]
+    day.range <- xh - xl
+    open.low <- (xo - xl) / day.range
+    high.close <- (xh - xc) / day.range
+    open.low <= thresh & high.close <= thresh
+}
+
+trend.day.down <- function(x,thresh=0.2) {
+    stopifnot(all(c("open","high","low","close") %in% colnames(x)))
+    xo <- x[,"open"]
+    xh <- x[,"high"]
+    xl <- x[,"low"]
+    xc <- x[,"close"]
+    day.range <- xh - xl
+    open.high <- (xh - xo) / day.range
+    low.close <- (xc - xl) / day.range
+    open.high <= thresh & low.close <= thresh
+}
+
+trend.day <- function(x,thresh=.2) {
+    trend.day.up(x,thresh) - trend.day.down(x,thresh)
 }

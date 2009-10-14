@@ -33,8 +33,11 @@ namespace tslib {
     static const bool is_leap_year(const int year);
   public:
     static const T toDate(const char* date, const char* format);
-    static const T toDate(const int year, const int month, const int day, const int hour, const int minute, const int second);
+    static const T toDate(const int year, const int month, const int day, const int hour = 0, const int minute = 0, const int second = 0, const int millisecond = 0);
     static const std::string toString(const T x, const char* format);
+    static const int second(const T x);
+    static const int minute(const T x);
+    static const int hour(const T x);
     static const int dayofweek(const T x);
     static const int dayofmonth(const T x);
     static const int month(const T x);
@@ -141,7 +144,7 @@ namespace tslib {
 #endif
 
   template<typename T>
-  const T PosixDate<T>::toDate(const int year, const int month, const int day, const int hour, const int minute, const int second) {
+  const T PosixDate<T>::toDate(const int year, const int month, const int day, const int hour, const int minute, const int second, const int millisecond) {
 
     struct tm localtime_tm;
 
@@ -166,7 +169,7 @@ namespace tslib {
     localtime_tm.tm_isdst = -1;
 
     // convert to POSIXct
-    return static_cast<T>(mktime(&localtime_tm));
+    return static_cast<T>(mktime(&localtime_tm)) + static_cast<T>(millisecond/1000.0);
   }
 
   template<typename T>
@@ -177,6 +180,27 @@ namespace tslib {
     to_time_tm(posix_time_tm, x);
     strftime(ans_char,BUFFSIZE,format,&posix_time_tm);
     return std::string(ans_char);
+  }
+
+  template<typename T>
+  const int PosixDate<T>::second(const T x) {
+    struct tm posix_time_tm;
+    to_time_tm(posix_time_tm, x);
+    return posix_time_tm.tm_sec;
+  }
+
+  template<typename T>
+  const int PosixDate<T>::minute(const T x) {
+    struct tm posix_time_tm;
+    to_time_tm(posix_time_tm, x);
+    return posix_time_tm.tm_min;
+  }
+
+  template<typename T>
+  const int PosixDate<T>::hour(const T x) {
+    struct tm posix_time_tm;
+    to_time_tm(posix_time_tm, x);
+    return posix_time_tm.tm_hour;
   }
 
   template<typename T>

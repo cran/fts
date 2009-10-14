@@ -22,42 +22,46 @@
 
 #include <tslib/tseries.data.hpp>
 #include <tslib/range.specifier/rangeSpecifier.hpp>
-#include <tslib/range.specifier/range.opp.hpp>
+#include <tslib/range.specifier/range.iterator.hpp>
+#include <tslib/ts.opps/ts.promotion.hpp>
 
 namespace tslib {
 
 
   template<class TDATE,
-           class TDATA,
+           class TDATA1,
+	   class TDATA2,
            class TSDIM,
            template<typename,typename,typename> class TSDATABACKEND,
            template<typename> class DatePolicy,
            template<class U, class V, class W, template<typename,typename,typename> class DATABACKEND, template<typename> class DP> class TSeries,
            class opptype>
 
-  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> apply_opp(const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>& lhs,
-                                                                      const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>& rhs,
-                                                                      opptype opp) {
+  const TSeries<TDATE, typename Promotion<TDATA1,TDATA2>::ResultT,TSDIM,TSDATABACKEND,DatePolicy> apply_opp(const TSeries<TDATE,TDATA1,TSDIM,TSDATABACKEND,DatePolicy>& lhs,
+													    const TSeries<TDATE,TDATA2,TSDIM,TSDATABACKEND,DatePolicy>& rhs,
+													    opptype opp) {
+
+    typedef typename Promotion<TDATA1,TDATA2>::ResultT ResultT;
 
     if(lhs.ncol() != rhs.ncol())
-      return TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>();
+      return TSeries<TDATE,ResultT,TSDIM,TSDATABACKEND,DatePolicy>();
 
     // find date intersection
     RangeSpecifier<TDATE,TSDIM> range(lhs.getDates(), rhs.getDates(), lhs.nrow(), rhs.nrow() );
 
     if(!range.getSize())
-      return TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>();
+      return TSeries<TDATE,ResultT,TSDIM,TSDATABACKEND,DatePolicy>();
 
     // allocate new answer
-    TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans(range.getSize(),lhs.ncol());
+    TSeries<TDATE,ResultT,TSDIM,TSDATABACKEND,DatePolicy> ans(range.getSize(),lhs.ncol());
 
     // copy over dates
     std::copy(range.getDates(),range.getDates()+range.getSize(),ans.getDates());
 
     // set new colnames
-    vector<string> lhs_cnames = lhs.getColnames();
-    vector<string> rhs_cnames = rhs.getColnames();
-    vector<string> ans_cnames;
+    std::vector<std::string> lhs_cnames = lhs.getColnames();
+    std::vector<std::string> rhs_cnames = rhs.getColnames();
+    std::vector<std::string> ans_cnames;
 
     if(lhs_cnames==rhs_cnames) {
       ans_cnames = lhs_cnames;
@@ -74,16 +78,17 @@ namespace tslib {
 
     ans.setColnames(ans_cnames);
 
-    TDATA* ans_data = ans.getData();
-    TDATA* lhs_data = lhs.getData();
-    TDATA* rhs_data = rhs.getData();
+    ResultT* ans_data = ans.getData();
+    TDATA1* lhs_data = lhs.getData();
+    TDATA2* rhs_data = rhs.getData();
 
     for(TSDIM col = 0; col < lhs.ncol(); col++) {
 
-      RangeIterator<const TDATA*, const TSDIM*> lhs_iter(lhs_data, range.getArg1());
-      RangeIterator<const TDATA*, const TSDIM*> rhs_iter(rhs_data, range.getArg2());
-
-      applyRangeOpp(ans_data, lhs_iter, rhs_iter, range.getSize(), opp);
+      RangeIterator<const TDATA1*, const TSDIM*> lhs_iter(lhs_data, range.getArg1());
+      RangeIterator<const TDATA2*, const TSDIM*> rhs_iter(rhs_data, range.getArg2());
+      for(TSDIM i = 0; i < range.getSize(); i++) {
+      	ans_data[i] = opp( static_cast<ResultT>(*lhs_iter++), static_cast<ResultT>(*rhs_iter++));
+      }
 
       // increment column
       ans_data+= ans.nrow();
@@ -96,18 +101,20 @@ namespace tslib {
 
 
   template<class TDATE,
-           class TDATA,
+           class TDATA1,
+           class TDATA2,
            class TSDIM,
            template<typename,typename,typename> class TSDATABACKEND,
            template<typename> class DatePolicy,
            template<class U, class V, class W, template<typename,typename,typename> class DATABACKEND, template<typename> class DP> class TSeries,
            class opptype>
 
-  const vector<bool> apply_boolean_opp(const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>& lhs,
-                                       const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>& rhs,
-                                       opptype opp) {
+  const std::vector<bool> apply_boolean_opp(const TSeries<TDATE,TDATA1,TSDIM,TSDATABACKEND,DatePolicy>& lhs,
+					    const TSeries<TDATE,TDATA2,TSDIM,TSDATABACKEND,DatePolicy>& rhs,
+					    opptype opp) {
 
-    vector<bool> ans;
+    typedef typename Promotion<TDATA1,TDATA2>::ResultT ResultT;
+    std::vector<bool> ans;
 
     if(lhs.ncol() != rhs.ncol())
       return ans;
@@ -119,18 +126,20 @@ namespace tslib {
       return ans;
 
     // allocate new answer
-    ans.reserve(range.getSize()*lhs.ncol);
+    ans.reserve(range.getSize()*lhs.ncol());
 
-    vector<bool>::iterator ans_data = ans.begin();
-    TDATA* lhs_data = lhs.getData();
-    TDATA* rhs_data = rhs.getData();
+    std::vector<bool>::iterator ans_data = ans.begin();
+    TDATA1* lhs_data = lhs.getData();
+    TDATA2* rhs_data = rhs.getData();
 
     for(TSDIM col = 0; col < lhs.ncol(); col++) {
 
-      RangeIterator<const TDATA*, const TSDIM*> lhs_iter(lhs_data, range.getArg1());
-      RangeIterator<const TDATA*, const TSDIM*> rhs_iter(rhs_data, range.getArg2());
+      RangeIterator<const TDATA1*, const TSDIM*> lhs_iter(lhs_data, range.getArg1());
+      RangeIterator<const TDATA2*, const TSDIM*> rhs_iter(rhs_data, range.getArg2());
 
-      applyRangeOpp(ans_data, lhs_iter, rhs_iter, range.getSize(), opp);
+      for(TSDIM i = 0; i < range.getSize(); i++) {
+      	ans_data[i] = opp( static_cast<ResultT>(*lhs_iter++), static_cast<ResultT>(*rhs_iter++));
+      }
 
       // increment column
       ans_data += range.getSize();
