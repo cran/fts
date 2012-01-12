@@ -446,6 +446,29 @@ void transform_test() {
   BOOST_CHECK_EQUAL(fillbwd_ans.getData()[21], static_cast<double>(23));
 }
 
+void pad_test() {
+  long xnr = 10;
+  long xnc = 5;
+
+  LDL_ts x(xnr,xnc);
+
+  // gernate data
+  for(long vi = 0; vi < x.nrow()*x.ncol(); vi++)
+    x.getData()[vi] = vi+1;
+
+  // generate dates
+  for(long xi = 0; xi < x.nrow(); xi++)
+    x.getDates()[xi] = xi+1;
+
+  vector<long> pad_dates;
+  pad_dates.push_back(x.nrow() + 10);
+  pad_dates.push_back(x.nrow() + 20);
+  LDL_ts ans = x.pad(pad_dates.begin(),pad_dates.end());
+  cout << "pad test:" << endl;
+  cout << x << endl;
+  cout << ans << endl;
+}
+
 
 void lag_lead_test() {
 
@@ -615,7 +638,7 @@ void freq_conv_test_year() {
   // generate dates/data
   for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
   std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
-  DDL_ts ans = x.freq<yyyy>();
+  DDL_ts ans = x.freq<yyyy>(1);
   cout << "freq year:" << endl;
   cout << ans << endl;
 }
@@ -693,7 +716,7 @@ void freq_conv_test_minute() {
 }
 
 void freq_conv_test_second() {
-  long xnr = 240;
+  long xnr = 100;
   long xnc = 5;
   DDL_ts x(xnr,xnc);
   // generate dates/data -- 1/10 sec increments
@@ -702,6 +725,14 @@ void freq_conv_test_second() {
   DDL_ts ans = x.freq<yyyymmddHHMMSS>();
   cout << "freq second:" << endl;
   cout << ans << endl;
+
+  DDL_ts ans2 = x.freq<yyyymmddHHMMSS>(2);
+  cout << "freq 2 seconds:" << endl;
+  cout << ans2 << endl;
+
+  DDL_ts ans3 = x.freq<yyyymmddHHMMSS>(3);
+  cout << "freq 3 seconds:" << endl;
+  cout << ans3 << endl;
 }
 
 void time_window_test_month() {
@@ -717,7 +748,7 @@ void time_window_test_month() {
   for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60*24; }
   std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
 
-  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymm>();
+  DDL_ts sum_ans = x.time_window<sum_ansType,Sum,yyyymm>();
 
   cout << "months:" << endl;
   cout << sum_ans << endl;
@@ -736,7 +767,7 @@ void time_window_test_day() {
   for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60*60; }
   std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
 
-  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmdd>();
+  DDL_ts sum_ans = x.time_window<sum_ansType,Sum,yyyymmdd>();
 
   cout << "days:" << endl;
   cout << sum_ans << endl;
@@ -755,7 +786,7 @@ void time_window_test_hour() {
   for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i * 60; }
   std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
 
-  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHH>();
+  DDL_ts sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHH>();
 
   cout << "hours:" << endl;
   cout << sum_ans << endl;
@@ -774,7 +805,7 @@ void time_window_test_minute() {
   for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = i; }
   std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
 
-  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHHMM>();
+  DDL_ts sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHHMM>();
 
   cout << "minutes:" << endl;
   cout << sum_ans << endl;
@@ -793,17 +824,23 @@ void time_window_test_second() {
   for(int i = 0; i < x.nrow(); i++) { x.getDates()[i] = static_cast<double>(i)/10; }
   std::fill(x.getData(), x.getData() + x.nrow() * x.ncol(), 1.0);
 
-  TSeries<double,sum_ansType,long,TSdataSingleThreaded,PosixDate> sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHHMMSS>();
-
+  DDL_ts sum_ans = x.time_window<sum_ansType,Sum,yyyymmddHHMMSS>();
   cout << "seconds:" << endl;
   cout << sum_ans << endl;
+
+  DDL_ts sum_ans2 = x.time_window<sum_ansType,Sum,yyyymmddHHMMSS>(2);
+  cout << "2 seconds:" << endl;
+  cout << sum_ans2 << endl;
+
+  DDL_ts sum_ans3 = x.time_window<sum_ansType,Sum,yyyymmddHHMMSS>(3);
+  cout << "3 seconds:" << endl;
+  cout << sum_ans3 << endl;
 }
 
 test_suite*
 init_unit_test_suite( int argc, char* argv[] ) {
 
   test_suite* test= BOOST_TEST_SUITE("tslib test");
-
 
   test->add( BOOST_TEST_CASE( &null_constructor_test ) );
   test->add( BOOST_TEST_CASE( &std_constructor_test ) );
@@ -823,6 +860,7 @@ init_unit_test_suite( int argc, char* argv[] ) {
   test->add( BOOST_TEST_CASE( &transform_test ) );
   test->add( BOOST_TEST_CASE( &window_function_test ) );
   test->add( BOOST_TEST_CASE( &expanding_max_test ) );
+  test->add( BOOST_TEST_CASE( &pad_test ) );
 
   test->add( BOOST_TEST_CASE( &time_window_test_month ) );
   test->add( BOOST_TEST_CASE( &time_window_test_day ) );
@@ -840,5 +878,6 @@ init_unit_test_suite( int argc, char* argv[] ) {
   test->add( BOOST_TEST_CASE( &freq_conv_test_hour ) );
   test->add( BOOST_TEST_CASE( &freq_conv_test_minute ) );
   test->add( BOOST_TEST_CASE( &freq_conv_test_second ) );
+
   return test;
 }

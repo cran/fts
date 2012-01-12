@@ -27,7 +27,7 @@ fts <- function(data,dates) {
         stop("Dates and data must be same length.")
     }
 
-    if(is.numeric(dates)&&is.null(class(dates))) {
+    if(is.numeric(dates) && is.null(class(dates))){
         class(dates) <- c("POSIXt","POSIXct")
     } else {
         dates <- as.POSIXct(dates)
@@ -66,10 +66,10 @@ as.fts.data.frame <- function(x) {
 }
 
 as.fts.zoo <- function(x) {
-    stopifnot(inherits(index(x), "POSIXct"))
+    stopifnot(inherits(attr(x,"index"), "POSIXct"))
 
-    fts(data=coredata(x),
-        dates=index(x))
+    fts(data=unclass(x),
+        dates=attr(x,"index"))
 }
 
 as.matrix.fts <- function(x, ...) {
@@ -335,18 +335,6 @@ fix.cnames <- function(cnames.list) {
     unlist(cnames.list)
 }
 
-pad <- function(x,pad.dates) {
-
-    new.dates <- sort(unique(c(dates(x),pad.dates)))
-    class(new.dates) <- c("POSIXt","POSIXct")
-    ans <- matrix(nrow=length(new.dates),ncol=ncol(x))
-    attr(ans,"dates") <- new.dates
-    class(ans) <- c("fts","matrix")
-    ans[dates(x),] <- x
-    colnames(ans) <- colnames(x)
-    ans
-}
-
 trim <- function(x,trim.dates) {
     new.dates <- sort(intersect(dates(x),trim.dates))
     class(new.dates) <- c("POSIXt","POSIXct")
@@ -365,15 +353,6 @@ read.csv.fts <- function(file, date.column=1, date.format="%Y-%m-%d",...) {
 
     fts(dates=as.POSIXct(strptime(fts.data[,date.column],date.format)),
         data=as.matrix(fts.data[, -date.column, drop=F]))
-}
-
-read.rds.fts <- function(file) {
-    x <- .readRDS(file)
-    x
-}
-
-write.rds.fts <- function(x,file) {
-    .saveRDS(x,file)
 }
 
 cumsum.fts <- function(x) {
@@ -502,7 +481,7 @@ since.na <- function(x) {
 }
 
 lag.fts <- function(x, k, ...) {
-    stopifnot(k > 0)
+    stopifnot(k > -1)
     ans <- .Call("lag", x, as.integer(k),PACKAGE="fts")
     ans
 }
@@ -533,6 +512,10 @@ fill.bwd <- function(x) {
 
 fill.value <- function(x,value) {
     .Call("fillValue",x,value,PACKAGE="fts")
+}
+
+pad <- function(x,pad.dates) {
+    .Call("pad",x,pad.dates,PACKAGE="fts")
 }
 
 monthly.sum <- function(x) {
@@ -569,6 +552,22 @@ to.minute <- function(x) {
 
 to.second <- function(x) {
     .Call("toSecond",x,PACKAGE="fts")
+}
+
+to.day.of.week <- function(x,day.of.week,beginning.of.period=TRUE) {
+    dts <- dates(x)
+    end.date <- dts[nrow(x)]
+    end.date <- end.date + 6 * 60*60*24
+    pad.days <- seq.POSIXt(from=dts[1],to=end.date,by="DSTday")
+    pad.days <- pad.days[as.POSIXlt(pad.days)$wday==day.of.week]
+    x.filled <- fill.fwd(pad(x,as.POSIXct(pad.days)))
+    ans <- x.filled[as.POSIXlt(dates(x.filled))$wday == day.of.week,]
+    if(beginning.of.period) {
+        new.dates <- dates(ans) - 60*60*24 * 6
+        new.dates <- new.dates - ((as.POSIXlt(new.dates)$hour + 1) %% 24 -1) * 60*60
+        dates(ans) <- new.dates
+    }
+    ans
 }
 
 analog <- function(stationary, window, moving=stationary) {
@@ -612,6 +611,12 @@ lm.fts <- function(y,...,origin=F) {
     ans
 }
 
+## drop out rows that do not have the required number of observations
+filter.min.obs <- function(x,obs.required) {
+    obs <- apply(!is.na(x),1,sum)
+    x[obs >= obs.required,]
+}
+
 ###############################################################
 ################### Technical Analysis  #######################
 ###############################################################
@@ -630,6 +635,10 @@ rsi <- function(x,periods) {
     x.avg.down <- ema(x.down, periods)
 
     100 - 100/(1 - x.avg.up/x.avg.down)
+}
+
+year <- function(x) {
+    fts(dates=dates(x),data=as.POSIXlt(dates(x))$year+1900)
 }
 
 month <- function(x) {
@@ -885,4 +894,15 @@ trend.day.down <- function(x,thresh=0.2) {
 
 trend.day <- function(x,thresh=.2) {
     trend.day.up(x,thresh) - trend.day.down(x,thresh)
+}
+
+cor.by.row <- function(x,y) {
+    i.dts <- sort(intersect(dates(x),dates(y)))
+    class(i.dts) <- "POSIXct"
+    ans <- template.fts(i.dts,"cor")
+
+    for(i in 1:length(i.dts)) {
+        ans[i,] <- cor(as.vector(x[i.dts[i],]),as.vector(y[i.dts[i],]))
+    }
+    ans
 }

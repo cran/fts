@@ -20,9 +20,7 @@ export(
        pad,
        trim,
        read.csv.fts,
-       read.rds.fts,
        write.csv.fts,
-       write.rds.fts,
        print.fts,
 
        to.yearly,
@@ -33,6 +31,7 @@ export(
        to.hourly,
        to.minute,
        to.second,
+       to.day.of.week,
 
        moving.mean,
        moving.sum,
@@ -75,10 +74,12 @@ export(
        col.all,
 
        lm.fts,
+       filter.min.obs,
 
        ## technical analysis
        ema,
        rsi,
+       year,
        month,
        day,
        ma.crossover.up,
@@ -123,7 +124,8 @@ export(
        ma.distance,
        trend.day,
        trend.day.up,
-       trend.day.down
+       trend.day.down,
+       cor.by.row
 )
 
 S3method("Ops", "fts")
