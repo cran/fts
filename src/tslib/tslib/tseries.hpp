@@ -1,4 +1,3 @@
-
 ///////////////////////////////////////////////////////////////////////////
 // Copyright (C) 2008  Whit Armstrong                                    //
 //                                                                       //
@@ -104,10 +103,10 @@ namespace tslib {
     TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>& operator=(const TDATA x);
 
     // lag lead
-    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> operator() (const int n) const;
-    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> lag(const unsigned int n) const;
-    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> lead(const unsigned int n) const;
-    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> diff(const unsigned int n) const;
+    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> operator() (const TSDIM n) const;
+    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> lag(const TSDIM n) const;
+    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> lead(const TSDIM n) const;
+    const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> diff(const TSDIM n) const;
 
     // matix index
     const TDATA operator() (const TSDIM row, const TSDIM col) const;
@@ -160,7 +159,7 @@ namespace tslib {
   }
 
   template<typename TDATE, typename TDATA, typename TSDIM, template<typename,typename,typename> class TSDATABACKEND, template<typename> class DatePolicy>
-  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::operator() (const int n) const {
+  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::operator() (const TSDIM n) const {
     if( n > 0 ) {
       return lag(n);
     } else if( n < 0) {
@@ -170,7 +169,7 @@ namespace tslib {
   }
 
   template<typename TDATE, typename TDATA, typename TSDIM, template<typename,typename,typename> class TSDATABACKEND, template<typename> class DatePolicy>
-  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::lag(const unsigned int n) const {
+  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::lag(const TSDIM n) const {
     if(n >= nrow()) { throw std::logic_error("lag: n > nrow of time series."); }
     const TSDIM new_size = nrow() - n;
     TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans(new_size, ncol());
@@ -192,7 +191,7 @@ namespace tslib {
   }
 
   template<typename TDATE, typename TDATA, typename TSDIM, template<typename,typename,typename> class TSDATABACKEND, template<typename> class DatePolicy>
-  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::lead(const unsigned int n) const {
+  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::lead(const TSDIM n) const {
     if(n >= nrow()) { throw std::logic_error("lead: n > nrow of time series."); }
     const TSDIM new_size = nrow() - n;
     TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans(new_size, ncol());
@@ -214,7 +213,7 @@ namespace tslib {
   }
 
   template<typename TDATE, typename TDATA, typename TSDIM, template<typename,typename,typename> class TSDATABACKEND, template<typename> class DatePolicy>
-  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::diff(const unsigned int n) const {
+  const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::diff(const TSDIM n) const {
     if(n >= nrow()) { throw std::logic_error("diff: n > nrow of time series."); }
     const TSDIM new_size = nrow() - n;
     TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans(new_size, ncol());
@@ -252,36 +251,6 @@ namespace tslib {
   TDATA& TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>::operator() (const TSDIM row, const TSDIM col) {
     TDATA* data = getData();
     return data[offset(row, col)];
-  }
-
-  template<typename TDATE, typename TDATA, typename TSDIM, template<typename,typename,typename> class TSDATABACKEND, template<typename> class DatePolicy>
-  std::ostream& operator<< (std::ostream& os, const TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy>& ts) {
-    std::vector<std::string> cnames(ts.getColnames());
-
-    if(cnames.size()) {
-      // shift out to be in line w/ first column of values (space is for dates column)
-      os << "\t";
-      for(std::vector<std::string>::const_iterator iter = cnames.begin(); iter != cnames.end(); iter++) {
-        os << *iter++ << " ";
-      }
-    }
-
-    TDATE* dates = ts.getDates();
-    TSDIM nr  = ts.nrow();
-    TSDIM nc  = ts.ncol();
-
-    for(TSDIM row = 0; row < nr; row++) {
-      os << DatePolicy<TDATE>::toString(dates[row],"%Y-%m-%d %T") << "\t";
-      for(TSDIM col = 0; col < nc; col++) {
-        if(numeric_traits<TDATA>::ISNA(ts(row,col))) {
-          os << "NA" << " ";
-        } else {
-          os << ts(row,col) << " ";
-        }
-      }
-      os << std::endl;
-    }
-    return os;
   }
 
   template<typename TDATE, typename TDATA, typename TSDIM, template<typename,typename,typename> class TSDATABACKEND, template<typename> class DatePolicy>

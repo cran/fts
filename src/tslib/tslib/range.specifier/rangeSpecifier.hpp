@@ -18,8 +18,6 @@
 #ifndef RANGESPECIFIER_HPP
 #define RANGESPECIFIER_HPP
 
-#include <iostream>
-
 namespace tslib {
 
   // template friend must be pre-declared
@@ -134,14 +132,6 @@ namespace tslib {
     return index2_;
   }
 
-
-  template<typename T, typename U>
-  std::ostream& operator<< (std::ostream& os, const RangeSpecifier<T,U>& rs) {
-    for(U i = 0; i < rs.size_; i++) {
-      os << rs.dates_[i] << ":" << rs.index1_[i] << ":" << rs.index2_[i] << std::endl;
-    }
-    return os;
-  }
 } // namespace tslib
 
 #endif

@@ -1,5 +1,6 @@
-#define R_NO_REMAP
-#include <Rinternals.h>
+#ifndef FREQ_TRANSFORM_TEMPLATE_HPP
+#define FREQ_TRANSFORM_TEMPLATE_HPP
+
 #include <tslib/tseries.hpp>
 #include <R.tseries.data.backend.hpp>
 #include <Rsexp.allocator.templates.hpp>
@@ -8,59 +9,52 @@
 
 using namespace tslib;
 
-
 template<typename TDATE, typename TDATA,
          typename TSDIM,
          template<typename,typename,typename> class TSDATABACKEND,
-         template<typename> class DatePolicy>
-SEXP leadFun(SEXP x, SEXP periods) {
-  int p = Rtype<INTSXP>::scalar(periods);
-  if(p <= 0) {
-    REprintf("leadFun: periods is not positive.");
-    return R_NilValue;
-  }
+         template<typename> class DatePolicy,
+         template<class, template<typename> class> class PFUNC>
+SEXP freqFun(SEXP x) {
   // build tseries from SEXP x
   TSDATABACKEND<TDATE,TDATA,TSDIM> tsData(x);
   TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ts(tsData);
-  TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans = ts.template lead(p);
+  TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans = ts.template freq<PFUNC>();
   return ans.getIMPL()->Robject;
 }
 
-SEXP leadSpecializer(SEXP x, SEXP p) {
+template<template<class, template<typename> class> class PFUNC>
+SEXP freqSpecializer(SEXP x) {
   const TsTypeTuple tsTypeInfo(x);
 
   if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==dateT) {
-    return leadFun<double,double,R_len_t,JulianBackend,JulianDate>(x,p);
+    return freqFun<double,double,R_len_t,JulianBackend,JulianDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy==dateT) {
-    return leadFun<double,int,R_len_t,JulianBackend,JulianDate>(x,p);
+    return freqFun<double,int,R_len_t,JulianBackend,JulianDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy==dateT) {
-    return leadFun<double,int,R_len_t,JulianBackend,JulianDate>(x,p);
+    return freqFun<double,int,R_len_t,JulianBackend,JulianDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==dateT) {
-    return leadFun<int,double,R_len_t,JulianBackend,JulianDate>(x,p);
+    return freqFun<int,double,R_len_t,JulianBackend,JulianDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy==dateT) {
-    return leadFun<int,int,R_len_t,JulianBackend,JulianDate>(x,p);
+    return freqFun<int,int,R_len_t,JulianBackend,JulianDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy==dateT) {
-    return leadFun<int,int,R_len_t,JulianBackend,JulianDate>(x,p);
+    return freqFun<int,int,R_len_t,JulianBackend,JulianDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==posixT) {
-    return leadFun<double,double,R_len_t,PosixBackend,PosixDate>(x,p);
+    return freqFun<double,double,R_len_t,PosixBackend,PosixDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy==posixT) {
-    return leadFun<double,int,R_len_t,PosixBackend,PosixDate>(x,p);
+    return freqFun<double,int,R_len_t,PosixBackend,PosixDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy==posixT) {
-    return leadFun<double,int,R_len_t,PosixBackend,PosixDate>(x,p);
+    return freqFun<double,int,R_len_t,PosixBackend,PosixDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==posixT) {
-    return leadFun<int,double,R_len_t,PosixBackend,PosixDate>(x,p);
+    return freqFun<int,double,R_len_t,PosixBackend,PosixDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy==posixT) {
-    return leadFun<int,int,R_len_t,PosixBackend,PosixDate>(x,p);
+    return freqFun<int,int,R_len_t,PosixBackend,PosixDate,PFUNC>(x);
   } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy==posixT) {
-    return leadFun<int,int,R_len_t,PosixBackend,PosixDate>(x,p);
+    return freqFun<int,int,R_len_t,PosixBackend,PosixDate,PFUNC>(x);
   } else {
     //throw std::logic_error("unable to classify time series.");
-    REprintf("diffSpecializer: unable to classify time series.");
+    REprintf("transformSpecializer: unable to classify time series.");
     return R_NilValue;
   }
 }
 
-extern "C" SEXP lead(SEXP x, SEXP periods) {
-  return leadSpecializer(x,periods);
-}
-
+#endif // FREQ_TRANSFORM_TEMPLATE_HPP

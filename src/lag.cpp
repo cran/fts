@@ -1,4 +1,4 @@
-#include <iostream>
+#define R_NO_REMAP
 #include <Rinternals.h>
 #include <tslib/tseries.hpp>
 #include <R.tseries.data.backend.hpp>
@@ -15,31 +15,31 @@ template<typename TDATE, typename TDATA,
          template<typename> class DatePolicy>
 SEXP lagFun(SEXP x, SEXP periods) {
   int p = Rtype<INTSXP>::scalar(periods);
-  if(p <= 0) {
-    REprintf("lagFun: periods is not positive.");
+  if(p < 0) {
+    REprintf("lagFun: periods is not >= 0.");
     return R_NilValue;
   }
   // build tseries from SEXP x
   TSDATABACKEND<TDATE,TDATA,TSDIM> tsData(x);
   TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ts(tsData);
   TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans = ts.template lag(p);
-  return ans.getIMPL()->R_object;
+  return ans.getIMPL()->Robject;
 }
 
 SEXP lagSpecializer(SEXP x, SEXP p) {
   const TsTypeTuple tsTypeInfo(x);
 
-  if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy== dateT) {
+  if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==dateT) {
     return lagFun<double,double,R_len_t,JulianBackend,JulianDate>(x,p);
-  } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy== dateT) {
+  } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy==dateT) {
     return lagFun<double,int,R_len_t,JulianBackend,JulianDate>(x,p);
-  } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy== dateT) {
+  } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy==dateT) {
     return lagFun<double,int,R_len_t,JulianBackend,JulianDate>(x,p);
-  } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy== dateT) {
+  } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==dateT) {
     return lagFun<int,double,R_len_t,JulianBackend,JulianDate>(x,p);
-  } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy== dateT) {
+  } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==INTSXP && tsTypeInfo.datePolicy==dateT) {
     return lagFun<int,int,R_len_t,JulianBackend,JulianDate>(x,p);
-  } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy== dateT) {
+  } else if(tsTypeInfo.dateSEXPTYPE==INTSXP && tsTypeInfo.dataSEXPTYPE==LGLSXP && tsTypeInfo.datePolicy==dateT) {
     return lagFun<int,int,R_len_t,JulianBackend,JulianDate>(x,p);
   } else if(tsTypeInfo.dateSEXPTYPE==REALSXP && tsTypeInfo.dataSEXPTYPE==REALSXP && tsTypeInfo.datePolicy==posixT) {
     return lagFun<double,double,R_len_t,PosixBackend,PosixDate>(x,p);

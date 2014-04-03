@@ -1,13 +1,16 @@
-#include <iostream>
-
 #include <tslib/tseries.hpp>
 #include <tslib/vector.summary.hpp>
 #include <tslib/vector.transform.hpp>
 
 #include <R.tseries.data.backend.hpp>
 #include <Rsexp.allocator.templates.hpp>
-#include <R.window.template.hpp>
-#include <R.transform.template.hpp>
+
+#include <window.template.hpp>
+#include <window.intersection.template.hpp>
+#include <time.window.template.hpp>
+
+#include <transform.template.hpp>
+#include <freq.transform.template.hpp>
 
 extern "C" SEXP movingMean(SEXP x, SEXP periods) {
   return windowSpecializer<Mean, meanTraits>(x,periods);

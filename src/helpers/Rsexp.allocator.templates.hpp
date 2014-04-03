@@ -18,6 +18,7 @@
 #ifndef RSEXP_ALLOCATOR_TEMPLATES_HPP
 #define RSEXP_ALLOCATOR_TEMPLATES_HPP
 
+#define R_NO_REMAP
 #include <Rinternals.h>
 
 template<typename T>
@@ -26,7 +27,7 @@ public:
   static SEXPTYPE getType();
   static SEXP Matrix(const R_len_t nr, const R_len_t nc);
   static SEXP Vector(const R_len_t len);
-  static T* R_dataPtr(const SEXP x);
+  static T* RdataPtr(const SEXP x);
   static T scalar(const SEXP x);
 };
 
@@ -34,9 +35,9 @@ template<>
 class Rallocator<double> {
 public:
   static SEXPTYPE getType() { return REALSXP; }
-  static SEXP Matrix(const R_len_t nr, const R_len_t nc) { return allocMatrix(REALSXP,nr,nc); }
-  static SEXP Vector(const R_len_t len) { return allocVector(REALSXP,len); }
-  static double* R_dataPtr(const SEXP x) { return REAL(x); }
+  static SEXP Matrix(const R_len_t nr, const R_len_t nc) { return Rf_allocMatrix(REALSXP,nr,nc); }
+  static SEXP Vector(const R_len_t len) { return Rf_allocVector(REALSXP,len); }
+  static double* RdataPtr(const SEXP x) { return REAL(x); }
   static double scalar(const SEXP x) { return REAL(x)[0]; }
 };
 
@@ -44,9 +45,9 @@ template<>
 class Rallocator<int> {
 public:
   static SEXPTYPE getType() { return INTSXP; }
-  static SEXP Matrix(const R_len_t nr, const R_len_t nc) { return allocMatrix(INTSXP,nr,nc); }
-  static SEXP Vector(const R_len_t len) { return allocVector(INTSXP,len); }
-  static int* R_dataPtr(const SEXP x) { return INTEGER(x); }
+  static SEXP Matrix(const R_len_t nr, const R_len_t nc) { return Rf_allocMatrix(INTSXP,nr,nc); }
+  static SEXP Vector(const R_len_t len) { return Rf_allocVector(INTSXP,len); }
+  static int* RdataPtr(const SEXP x) { return INTEGER(x); }
   static int scalar(const SEXP x) { return INTEGER(x)[0]; }
 };
 
@@ -54,9 +55,9 @@ template<>
 class Rallocator<bool> {
 public:
   static SEXPTYPE getType() { return LGLSXP; }
-  static SEXP Matrix(const R_len_t nr, const R_len_t nc) { return allocMatrix(LGLSXP,nr,nc); }
-  static SEXP Vector(const R_len_t len) { return allocVector(LGLSXP,len); }
-  static int* R_dataPtr(const SEXP x) { return LOGICAL(x); }
+  static SEXP Matrix(const R_len_t nr, const R_len_t nc) { return Rf_allocMatrix(LGLSXP,nr,nc); }
+  static SEXP Vector(const R_len_t len) { return Rf_allocVector(LGLSXP,len); }
+  static int* RdataPtr(const SEXP x) { return LOGICAL(x); }
   static int scalar(const SEXP x) { return LOGICAL(x)[0]; }
 };
 
