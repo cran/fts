@@ -1,6 +1,9 @@
 useDynLib(fts)
 
-importFrom(stats,lag)
+importFrom("grDevices", "xy.coords")
+importFrom("graphics", "plot", "plot.xy")
+importFrom("stats", "cor", "lag")
+importFrom("utils", "read.csv", "write.csv")
 
 importFrom(zoo,coredata)
 importFrom(zoo, index)
@@ -137,3 +140,14 @@ S3method("lag", "fts")
 
 S3method("plot", "fts")
 S3method("print", "fts")
+
+S3method("[<-", "fts")
+S3method("as.data.frame", "fts")
+S3method("as.fts", "data.frame")
+S3method("as.fts", "default")
+S3method("as.fts", "zoo")
+S3method("as.matrix", "fts")
+S3method("cbind", "fts")
+S3method("diff", "fts")
+S3method("lead", "fts")
+S3method("rbind", "fts")
