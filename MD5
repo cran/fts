@@ -1,4 +1,4 @@
-230ca881a7d81fbfe1c38c0212b073f6 *DESCRIPTION
+22239cc9cbc014287a7207d6377c4480 *DESCRIPTION
 46198257c1929f05f7617fcdd16ba5e3 *NAMESPACE
 d0dd69d8b3f47929570308fe8f3cd307 *R/fts.R
 1a0fa2e95e2fd56c29a9823e05b1aa02 *man/any.all.fts.Rd
@@ -18,7 +18,7 @@ ec543741265cc452d52583c6f91d673d *man/moving.Rd
 8aff81340b37b69fb54ed35d4f638489 *man/remove.rows.Rd
 a6a70c0be746edbe9fd3c6b40f0a5d66 *man/since.na.Rd
 b03ea0206a2b72770dc79edf3ca2b9cb *src/Makevars
-8a6077cc46db233c93cdc99533908303 *src/diff.cpp
+3317cc7aaa82659472dd70f3235ee38f *src/diff.cpp
 45e485bc390d818b9229bfcd13283384 *src/helpers/R.tseries.data.backend.hpp
 b52ca43add6b0bcc092e937de72daf8f *src/helpers/Rsexp.allocator.templates.hpp
 94903813385cf1500731adc640044552 *src/helpers/Rtype.hpp
@@ -29,9 +29,9 @@ d4df08f0f4a8aeec0ed52b2887143230 *src/helpers/time.window.template.hpp
 5a117f7aa661c0fdfc09a7762b0dc89f *src/helpers/window.intersection.template.hpp
 8a70be7fdf23d98b15f4d11aa8de4e51 *src/helpers/window.template.hpp
 f5f159d2abaea43bfb75396cc03299e2 *src/interface.cpp
-6fdb9d967782971b9825f29b503a73b1 *src/lag.cpp
-0cc57122e82138a925c20672c4941015 *src/lead.cpp
-246c742a3b3b11546ea38f3c4977d664 *src/pad.cpp
+fb9ab22b702135e2b25f37b5fcd3fce2 *src/lag.cpp
+f3ab5c7b6e7d83afe2cc920ef2245003 *src/lead.cpp
+b80c68087e053bd6e7e470e42966eb1c *src/pad.cpp
 d32239bcb673463ab874e80d47fae504 *src/tslib/GPLv3.LICENSE
 aeb7c67b6af75f46fbbc90cdaa5ae2e0 *src/tslib/Makefile
 c3ee6f8eacf5e2a7118416ef8d6229f9 *src/tslib/tslib/date.policies/date.partition.hpp

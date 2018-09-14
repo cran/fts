@@ -22,7 +22,7 @@ SEXP lagFun(SEXP x, SEXP periods) {
   // build tseries from SEXP x
   TSDATABACKEND<TDATE,TDATA,TSDIM> tsData(x);
   TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ts(tsData);
-  TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans = ts.template lag(p);
+  TSeries<TDATE,TDATA,TSDIM,TSDATABACKEND,DatePolicy> ans = ts.lag(p);
   return ans.getIMPL()->Robject;
 }
 
